@@ -47,8 +47,8 @@ local totalDensity, densityCap = 0, 50
 local densityImageData = love.image.newImageData(N,N)
 local quad = love.graphics.newQuad( 0, 0, N*scaleFactor,N*scaleFactor,N*scaleFactor,N*scaleFactor)
 
-local densityEffect = love.graphics.newPixelEffect [[
-   const number radius = 0.009;
+local densityEffect = love.graphics.newShader [[
+   const float radius = 0.009;
    
    vec4 effect(vec4 color, Image texture, vec2 texture_coords, vec2 pixel_coords)
    {
@@ -65,7 +65,7 @@ local densityEffect = love.graphics.newPixelEffect [[
       c += vec4( Texel(texture, vec2(u+radius,v-radius)) );
       c += vec4( Texel(texture, vec2(u+radius,v+radius)) );
       c += vec4( Texel(texture, vec2(u-radius,v+radius)) );
-      c /= 9;
+      c /= 9.0;
       return c;
    }
 ]]
@@ -96,10 +96,21 @@ end
 function love.update()
 
    -- If the mouse moves enough, call mouseEvent(x,y)
-   if love.mouse.isDown( "l" ) then
+   if love.mouse.isDown( 1 ) then
       local xCur, yCur = love.mouse.getPosition()
       if math.sqrt((xCur - xPrev)^2 + (yCur - yPrev)^2) > 1 then
          mouseEvent(xCur, yCur)
+      end
+      xPrev, yPrev = xCur, yCur
+   end
+
+   -- Handle touch input
+   for _, id in ipairs(love.touch.getTouches()) do
+      local xCur, yCur = love.touch.getPosition(id)
+      if xPrev and yPrev then
+          if math.sqrt((xCur - xPrev)^2 + (yCur - yPrev)^2) > 1 then
+              mouseEvent(xCur, yCur)
+          end
       end
       xPrev, yPrev = xCur, yCur
    end
@@ -121,14 +132,20 @@ function love.update()
 end
 
 function love.draw()
-   love.graphics.setPixelEffect(densityEffect)
+   love.graphics.setShader(densityEffect)
 
    -- Here we make a texture from the imageData and draw a fullscreen quad with that texture
    local img = love.graphics.newImage( densityImageData )
-   love.graphics.drawq(img,quad, 0, 0, 0, 1, 1, 0,0)
+   love.graphics.draw(img,quad, 0, 0, 0, 1, 1, 0,0)
 
    --Unset the fragment shader so you can draw other stuff.
-   love.graphics.setPixelEffect() 
+   love.graphics.setShader() 
 end
 
-love.graphics.setCaption( "Stable Fluids - click and drag!" )
+-- Reset xPrev and yPrev when touch ends
+function love.touchreleased(id, x, y, dx, dy, pressure)
+   --xPrev, yPrev = nil, nil
+end
+
+-- love.graphics.setCaption( "Stable Fluids - click and drag!" )
+love.window.setTitle("Stable Fluids - click and drag!")
